@@ -1,0 +1,67 @@
+name: Claude Code GitHub Integration
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  # Job for processing issues with 'claude-code' label
+  process-issue:
+    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-code')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Process Issue with Claude Code
+        uses: nicholaslee119/claude-code-github-action@0.1.1
+        with:
+          mode: 'issue'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          issue-body: ${{ github.event.issue.body }}
+          issue-title: ${{ github.event.issue.title }}
+          # Choose one authentication method:
+          # Option 1: Using AWS Bedrock (recommended)
+          use-bedrock: true
+          aws-region: 'us-east-2'
+          bedrock-access-key-id: ${{ secrets.BEDROCK_AWS_ACCESS_KEY_ID }}
+          bedrock-secret-access-key: ${{ secrets.BEDROCK_AWS_SECRET_ACCESS_KEY }}
+          # Option 2: Using Anthropic API directly
+          # use-bedrock: false
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+  
+  # Job for processing PR review comments
+  process-review:
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, 'Review:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Get PR details
+        id: pr
+        run: |
+          PR_NUMBER="${{ github.event.issue.number }}"
+          FEEDBACK="${{ github.event.comment.body }}"
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "feedback=$FEEDBACK" >> $GITHUB_OUTPUT
+      
+      - name: Process PR Review with Claude Code
+        uses: nicholaslee119/claude-code-github-action@0.1.1
+        with:
+          mode: 'review'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ steps.pr.outputs.number }}
+          feedback: ${{ steps.pr.outputs.feedback }}
+          # Choose one authentication method:
+          # Option 1: Using AWS Bedrock (recommended)
+          use-bedrock: true
+          aws-region: 'us-east-2'
+          bedrock-access-key-id: ${{ secrets.BEDROCK_AWS_ACCESS_KEY_ID }}
+          bedrock-secret-access-key: ${{ secrets.BEDROCK_AWS_SECRET_ACCESS_KEY }}
+          # Option 2: Using Anthropic API directly
+          # use-bedrock: false
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
